@@ -31,12 +31,12 @@ def train_network():
     network_input_duration, network_output_duration = prepare_sequences(duration, d_vocab)
 
     n_model = create_network(network_input_notes, n_vocab)
-    d_model = create_network(network_input_offset, o_vocab)
-    o_model = create_network(network_input_duration, d_vocab)
+    o_model = create_network(network_input_offset, o_vocab)
+    d_model = create_network(network_input_duration, d_vocab)
 
-    train(n_model, network_input_notes, network_output_notes, 1)
-    train(d_model, network_input_offset, network_output_offset, 1)
-    train(o_model, network_input_duration, network_output_duration, 1)
+    train(n_model, network_input_notes, network_output_notes, 100)
+    train(o_model, network_input_offset, network_output_offset, 50)
+    train(d_model, network_input_duration, network_output_duration, 50)
 
 
 def get_notes():

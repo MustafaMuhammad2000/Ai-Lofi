@@ -54,18 +54,18 @@ def generate():
     #print(network_input_notes)
 
     #model = create_network(normalized_input, n_vocab)
-    n_model = create_network( normalized_notes, n_vocab,'weights-improvement-01-5.1774-bigger.hdf5')
-    o_model = create_network( normalized_offset, o_vocab,'weights-improvement-01-7.3574-bigger.hdf5')
-    d_model = create_network( normalized_duration, d_vocab,'weights-improvement-01-2.4702-bigger.hdf5')
+    n_model = create_network( normalized_notes, n_vocab,'weights-notes.hdf5')
+    #o_model = create_network( normalized_offset, o_vocab,'weights-improvement-01-7.3574-bigger.hdf5')
+    d_model = create_network( normalized_duration, d_vocab,'weights-duration.hdf5')
     
     print("==================== notes =========================")
     prediction_notes = generate_notes(n_model, network_input_notes, pitchnames, n_vocab)
     print("==================== offset =========================")
-    prediction_offsets = generate_notes(o_model, network_input_offset, offsettimes, o_vocab)
+    #prediction_offsets = generate_notes(o_model, network_input_offset, offsettimes, o_vocab)
     print("==================== duration =========================")
     prediction_durations = generate_notes(d_model,network_input_duration, durationtimes, d_vocab)
 
-    create_midi(prediction_notes, prediction_offsets, prediction_durations)
+    create_midi(prediction_notes, None, prediction_durations)
 
 
 def prepare_sequences(notes, pitchnames, n_vocab):
@@ -125,6 +125,7 @@ def generate_notes(model, network_input, pitchnames, n_vocab):
     start = numpy.random.randint(0, len(network_input)-1)
 
     int_to_note = dict((number, note) for number, note in enumerate(pitchnames))
+    #print(int_to_note)
 
     pattern = network_input[start]
     prediction_output = []
@@ -137,9 +138,11 @@ def generate_notes(model, network_input, pitchnames, n_vocab):
         prediction = model.predict(prediction_input, verbose=0)
 
         index = numpy.argmax(prediction)
-        #print(numpy.shape(prediction))
+        #print(prediction)
+
         #print("index", index)
         result = int_to_note[index]
+        #print("result",result)
         prediction_output.append(result)
 
         pattern.append(index)
@@ -154,7 +157,7 @@ def create_midi(prediction_notes, prediction_offset, prediction_duration):
     offset = 0
     output_notes = []
     
-    if(len(prediction_notes)!=len(prediction_offset) or len(prediction_offset) != len(prediction_duration)):
+    if(len(prediction_notes)!=len(prediction_duration)):
         print("create midi input args not same length")
         os.exit(-1)
 
@@ -170,22 +173,22 @@ def create_midi(prediction_notes, prediction_offset, prediction_duration):
 
                 #if(type(dur)==fractions.Fraction):
                     
-                new_note = note.Note(int(current_note), quarterLength=float(prediction_duration[i]))
+                new_note = note.Note(int(current_note), quarterLength=float(Fraction(prediction_duration[i])))
                 new_note.storedInstrument = instrument.Piano()
                 notes.append(new_note)
             new_chord = chord.Chord(notes)
-            new_chord.offset = float(Fraction(prediction_offset[i]))
+            #new_chord.offset = float(Fraction(prediction_offset[i]))
+            new_chord.offset = offset
             output_notes.append(new_chord)
         # pattern is a note
         else:
-            new_note = note.Note(pattern, quarterLength=float(prediction_duration[i]))
-            #new_note.offset = offset
-            new_note.offset = float(Fraction(prediction_offset[i]))
+            new_note = note.Note(pattern, quarterLength=float(Fraction(prediction_duration[i])))
+            new_note.offset = offset
+            #new_note.offset = float(Fraction(prediction_offset[i]))
             new_note.storedInstrument = instrument.Piano()
             output_notes.append(new_note)
-
         # increase offset each iteration so that notes do not stack
-        #offset += 1
+        offset += float(Fraction(prediction_duration[i]))
 
     midi_stream = stream.Stream(output_notes)
 
