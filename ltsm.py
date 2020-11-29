@@ -8,6 +8,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Dropout
 from keras.layers import LSTM
+from keras.layers import GRU
 from keras.layers import Activation
 from keras.layers import BatchNormalization as BatchNorm
 from keras.utils import np_utils
@@ -16,23 +17,35 @@ from keras.callbacks import ModelCheckpoint
 
 def train_network():
     """ Train a Neural Network to generate music """
-    notes = get_notes()
+    notes = get_notes()['notes']
+    offset = get_notes()['offset']
+    duration = get_notes()['duration']
 
     # get amount of pitch names
     n_vocab = len(set(notes))
+    o_vocab = len(set(offset))
+    d_vocab = len(set(duration))
 
-    network_input, network_output = prepare_sequences(notes, n_vocab)
+    network_input_notes, network_output_notes = prepare_sequences(notes, n_vocab)
+    network_input_offset, network_output_offset = prepare_sequences(offset, o_vocab)
+    network_input_duration, network_output_duration = prepare_sequences(duration, d_vocab)
 
-    model = create_network(network_input, n_vocab)
+    n_model = create_network(network_input_notes, n_vocab)
+    d_model = create_network(network_input_offset, o_vocab)
+    o_model = create_network(network_input_duration, d_vocab)
 
-    train(model, network_input, network_output)
+    train(n_model, network_input_notes, network_output_notes, 1)
+    train(d_model, network_input_offset, network_output_offset, 1)
+    train(o_model, network_input_duration, network_output_duration, 1)
 
 
 def get_notes():
     """ Get all the notes and chords from the midi files in the ./midi_songs directory """
     notes = []
+    offset = []
+    duration = []
 
-    for file in glob.glob("lofi_midi/*.mid"):
+    for file in glob.glob("donger james training data/lofi/*.mid"):
         midi = converter.parse(file)
 
         print("Parsing %s" % file)
@@ -48,13 +61,21 @@ def get_notes():
         for element in notes_to_parse:
             if isinstance(element, note.Note):
                 notes.append(str(element.pitch))
+                offset.append(str(element.offset))
+                duration.append(str(element.duration.quarterLength))
             elif isinstance(element, chord.Chord):
                 notes.append('.'.join(str(n) for n in element.normalOrder))
 
     with open('data/notes', 'wb') as filepath:
         pickle.dump(notes, filepath)
 
-    return notes
+    with open('data/offset', 'wb') as filepath:
+        pickle.dump(offset, filepath)
+
+    with open('data/duration', 'wb') as filepath:
+        pickle.dump(duration, filepath)
+
+    return {'notes':notes, 'offset':offset, 'duration':duration}
 
 
 def prepare_sequences(notes, n_vocab):
@@ -92,14 +113,14 @@ def prepare_sequences(notes, n_vocab):
 def create_network(network_input, n_vocab):
     """ create the structure of the neural network """
     model = Sequential()
-    model.add(LSTM(
+    model.add(GRU(
         512,
         input_shape=(network_input.shape[1], network_input.shape[2]),
         recurrent_dropout=0.3,
         return_sequences=True
     ))
-    model.add(LSTM(512, return_sequences=True, recurrent_dropout=0.3,))
-    model.add(LSTM(512))
+    model.add(GRU(512, return_sequences=True, recurrent_dropout=0.3,))
+    model.add(GRU(512))
     model.add(BatchNorm())
     model.add(Dropout(0.3))
     model.add(Dense(256))
@@ -113,7 +134,7 @@ def create_network(network_input, n_vocab):
     return model
 
 
-def train(model, network_input, network_output):
+def train(model, network_input, network_output, epoch):
     """ train the neural network """
     filepath = "weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
     checkpoint = ModelCheckpoint(
@@ -125,7 +146,7 @@ def train(model, network_input, network_output):
     )
     callbacks_list = [checkpoint]
 
-    model.fit(network_input, network_output, epochs=200, batch_size=256, callbacks=callbacks_list)
+    model.fit(network_input, network_output, epochs=epoch, batch_size=25, callbacks=callbacks_list)
 
 
 if __name__ == '__main__':

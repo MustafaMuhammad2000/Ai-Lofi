@@ -1,14 +1,16 @@
 """ This module generates notes for a midi file using the
     trained neural network """
 import pickle
+from fractions import Fraction
 import numpy
 import os
 from music21 import instrument, note, stream, chord
-import tensorflow as tf
+import tensorflow as tf 
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Dropout
 from keras.layers import LSTM
+from keras.layers import GRU 
 from keras.layers import BatchNormalization as BatchNorm
 from keras.layers import Activation
 
@@ -25,16 +27,45 @@ def generate():
     #load the notes used to train the model
     with open('data/notes', 'rb') as filepath:
         notes = pickle.load(filepath)
+    with open('data/offset', 'rb') as filepath:
+        offset = pickle.load(filepath)
+    with open('data/duration', 'rb') as filepath:
+        duration = pickle.load(filepath)
+
 
     # Get all pitch names
     pitchnames = sorted(set(item for item in notes))
+    offsettimes = sorted(set(item for item in offset))
+    durationtimes = sorted(set(item for item in duration))
+
+    print("num pitch", len(pitchnames))
+    print("num offset", len(offsettimes))
+    print("num durration", len(durationtimes))
     # Get all pitch names
     n_vocab = len(set(notes))
+    o_vocab = len(set(offset))
+    d_vocab = len(set(duration))
 
-    network_input, normalized_input = prepare_sequences(notes, pitchnames, n_vocab)
-    model = create_network(normalized_input, n_vocab)
-    prediction_output = generate_notes(model, network_input, pitchnames, n_vocab)
-    create_midi(prediction_output)
+    #network_input, normalized_input = prepare_sequences(notes, pitchnames, n_vocab)
+
+    network_input_notes, normalized_notes = prepare_sequences(notes, pitchnames, n_vocab)
+    network_input_offset, normalized_offset = prepare_sequences(offset, offsettimes, o_vocab)
+    network_input_duration, normalized_duration = prepare_sequences(duration, durationtimes, d_vocab)
+    #print(network_input_notes)
+
+    #model = create_network(normalized_input, n_vocab)
+    n_model = create_network( normalized_notes, n_vocab,'weights-improvement-01-5.1774-bigger.hdf5')
+    o_model = create_network( normalized_offset, o_vocab,'weights-improvement-01-7.3574-bigger.hdf5')
+    d_model = create_network( normalized_duration, d_vocab,'weights-improvement-01-2.4702-bigger.hdf5')
+    
+    print("==================== notes =========================")
+    prediction_notes = generate_notes(n_model, network_input_notes, pitchnames, n_vocab)
+    print("==================== offset =========================")
+    prediction_offsets = generate_notes(o_model, network_input_offset, offsettimes, o_vocab)
+    print("==================== duration =========================")
+    prediction_durations = generate_notes(d_model,network_input_duration, durationtimes, d_vocab)
+
+    create_midi(prediction_notes, prediction_offsets, prediction_durations)
 
 
 def prepare_sequences(notes, pitchnames, n_vocab):
@@ -61,17 +92,17 @@ def prepare_sequences(notes, pitchnames, n_vocab):
     return (network_input, normalized_input)
 
 
-def create_network(network_input, n_vocab):
+def create_network(network_input, n_vocab, weights):
     """ create the structure of the neural network """
     model = Sequential()
-    model.add(LSTM(
+    model.add(GRU(
         512,
         input_shape=(network_input.shape[1], network_input.shape[2]),
         recurrent_dropout=0.3,
         return_sequences=True
     ))
-    model.add(LSTM(512, return_sequences=True, recurrent_dropout=0.3,))
-    model.add(LSTM(512))
+    model.add(GRU(512, return_sequences=True, recurrent_dropout=0.3,))
+    model.add(GRU(512))
     model.add(BatchNorm())
     model.add(Dropout(0.3))
     model.add(Dense(256))
@@ -83,7 +114,7 @@ def create_network(network_input, n_vocab):
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
     # Load the weights to each node
-    model.load_weights('weights-improvement-197-0.0825-bigger.hdf5')
+    model.load_weights(weights)
 
     return model
 
@@ -106,6 +137,8 @@ def generate_notes(model, network_input, pitchnames, n_vocab):
         prediction = model.predict(prediction_input, verbose=0)
 
         index = numpy.argmax(prediction)
+        #print(numpy.shape(prediction))
+        #print("index", index)
         result = int_to_note[index]
         prediction_output.append(result)
 
@@ -115,34 +148,44 @@ def generate_notes(model, network_input, pitchnames, n_vocab):
     return prediction_output
 
 
-def create_midi(prediction_output):
+def create_midi(prediction_notes, prediction_offset, prediction_duration):
     """ convert the output from the prediction to notes and create a midi file
         from the notes """
     offset = 0
     output_notes = []
+    
+    if(len(prediction_notes)!=len(prediction_offset) or len(prediction_offset) != len(prediction_duration)):
+        print("create midi input args not same length")
+        os.exit(-1)
 
     # create note and chord objects based on the values generated by the model
-    for pattern in prediction_output:
+    for i, pattern in enumerate(prediction_notes):
         # pattern is a chord
         if ('.' in pattern) or pattern.isdigit():
             notes_in_chord = pattern.split('.')
             notes = []
             for current_note in notes_in_chord:
-                new_note = note.Note(int(current_note))
+                dur = prediction_duration[i]
+                #if(isinstance(dur, fractions.Fraction):
+
+                #if(type(dur)==fractions.Fraction):
+                    
+                new_note = note.Note(int(current_note), quarterLength=float(prediction_duration[i]))
                 new_note.storedInstrument = instrument.Piano()
                 notes.append(new_note)
             new_chord = chord.Chord(notes)
-            new_chord.offset = offset
+            new_chord.offset = float(Fraction(prediction_offset[i]))
             output_notes.append(new_chord)
         # pattern is a note
         else:
-            new_note = note.Note(pattern)
-            new_note.offset = offset
+            new_note = note.Note(pattern, quarterLength=float(prediction_duration[i]))
+            #new_note.offset = offset
+            new_note.offset = float(Fraction(prediction_offset[i]))
             new_note.storedInstrument = instrument.Piano()
             output_notes.append(new_note)
 
         # increase offset each iteration so that notes do not stack
-        offset += 1
+        #offset += 1
 
     midi_stream = stream.Stream(output_notes)
 
