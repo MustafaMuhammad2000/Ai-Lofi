@@ -83,7 +83,7 @@ def create_network(network_input, n_vocab):
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
     # Load the weights to each node
-    model.load_weights('weights-improvement-197-0.0825-bigger.hdf5')
+    model.load_weights('weights-improvement-301-0.2455-bigger.hdf5')
 
     return model
 
@@ -142,7 +142,7 @@ def create_midi(prediction_output):
             output_notes.append(new_note)
 
         # increase offset each iteration so that notes do not stack
-        offset += 1
+        offset += 0.5
 
     midi_stream = stream.Stream(output_notes)
 

@@ -32,7 +32,7 @@ def get_notes():
     """ Get all the notes and chords from the midi files in the ./midi_songs directory """
     notes = []
 
-    for file in glob.glob("lofi_midi/*.mid"):
+    for file in glob.glob("new_midi/*.mid"):
         midi = converter.parse(file)
 
         print("Parsing %s" % file)
@@ -91,6 +91,8 @@ def prepare_sequences(notes, n_vocab):
 
 def create_network(network_input, n_vocab):
     """ create the structure of the neural network """
+
+    # Model 1
     model = Sequential()
     model.add(LSTM(
         512,
@@ -110,6 +112,7 @@ def create_network(network_input, n_vocab):
     model.add(Activation('softmax'))
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
+    # Model 2
     return model
 
 
@@ -125,7 +128,7 @@ def train(model, network_input, network_output):
     )
     callbacks_list = [checkpoint]
 
-    model.fit(network_input, network_output, epochs=200, batch_size=256, callbacks=callbacks_list)
+    model.fit(network_input, network_output, epochs=2000, batch_size=512, callbacks=callbacks_list)
 
 
 if __name__ == '__main__':
