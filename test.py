@@ -17,10 +17,8 @@ for file in glob.glob("lofi_midi/*.mid"):
 
     for element in notes_to_parse:
         if isinstance(element, note.Note):
-            print("Element is element is note", element, "then extract pitch", element.pitch)
-            print("Testing duration type: ", element.duration.type, "Testing duration dots: ",element.duration.dots, "Testing quarter length", element.duration.quarterLength)
-            print("Testing straight duration: ", element.duration)
-            print("Testing straight offset: ", element.offset)
+            print("Testing quarter length", element.duration.quarterLength, type(element.duration.quarterLength))
+            print(element.duration)
             notes.append(str(element.pitch))
         elif isinstance(element, chord.Chord):
             notes.append('.'.join(str(n) for n in element.normalOrder))
