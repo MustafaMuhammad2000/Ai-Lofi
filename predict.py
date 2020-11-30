@@ -54,9 +54,9 @@ def generate():
     #print(network_input_notes)
 
     #model = create_network(normalized_input, n_vocab)
-    n_model = create_network( normalized_notes, n_vocab,'notesweights-improvement-99-0.6497-bigger.hdf5')
+    n_model = create_network( normalized_notes, n_vocab,'models/notesweights-improvement-99-0.6497-bigger.hdf5')
     #o_model = create_network( normalized_offset, o_vocab,'weights-improvement-01-7.3574-bigger.hdf5')
-    d_model = create_network( normalized_duration, d_vocab,'durationweights-improvement-70-0.1670-bigger.hdf5')
+    d_model = create_network( normalized_duration, d_vocab,'models/durationweights-improvement-70-0.1670-bigger.hdf5')
     
     start = numpy.random.randint(0, len(network_input_notes)-1)
     print("==================== notes =========================")
