@@ -18,25 +18,27 @@ from keras.callbacks import ModelCheckpoint
 def train_network():
     """ Train a Neural Network to generate music """
     notes = get_notes()['notes']
-    offset = get_notes()['offset']
+    #offset = get_notes()['offset']
     duration = get_notes()['duration']
 
     # get amount of pitch names
     n_vocab = len(set(notes))
-    o_vocab = len(set(offset))
+    #o_vocab = len(set(offset))
     d_vocab = len(set(duration))
 
     network_input_notes, network_output_notes = prepare_sequences(notes, n_vocab)
-    network_input_offset, network_output_offset = prepare_sequences(offset, o_vocab)
+    #network_input_offset, network_output_offset = prepare_sequences(offset, o_vocab)
     network_input_duration, network_output_duration = prepare_sequences(duration, d_vocab)
 
     n_model = create_network(network_input_notes, n_vocab)
-    o_model = create_network(network_input_offset, o_vocab)
+    #o_model = create_network(network_input_offset, o_vocab)
     d_model = create_network(network_input_duration, d_vocab)
 
-    train(n_model, network_input_notes, network_output_notes, 100)
-    train(o_model, network_input_offset, network_output_offset, 50)
-    train(d_model, network_input_duration, network_output_duration, 50)
+    n_model.load
+
+    train(n_model, network_input_notes, network_output_notes, 100, "notes")
+    #train(o_model, network_input_offset, network_output_offset, 50)
+    #train(d_model, network_input_duration, network_output_duration, 100, "duration")
 
 
 def get_notes():
@@ -46,8 +48,7 @@ def get_notes():
     duration = []
 
     for file in glob.glob("donger james training data/lofi/*.mid"):
-        midi = converter.parse(file)
-
+        midi = converter.parse(file) 
         print("Parsing %s" % file)
 
         notes_to_parse = None
@@ -65,6 +66,8 @@ def get_notes():
                 duration.append(str(element.duration.quarterLength))
             elif isinstance(element, chord.Chord):
                 notes.append('.'.join(str(n) for n in element.normalOrder))
+                offset.append(str(element.offset))
+                duration.append(str(element.duration.quarterLength))
 
     with open('data/notes', 'wb') as filepath:
         pickle.dump(notes, filepath)
@@ -134,9 +137,9 @@ def create_network(network_input, n_vocab):
     return model
 
 
-def train(model, network_input, network_output, epoch):
+def train(model, network_input, network_output, epoch, name):
     """ train the neural network """
-    filepath = "weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
+    filepath = name+"weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
     checkpoint = ModelCheckpoint(
         filepath,
         monitor='loss',
@@ -146,7 +149,7 @@ def train(model, network_input, network_output, epoch):
     )
     callbacks_list = [checkpoint]
 
-    model.fit(network_input, network_output, epochs=epoch, batch_size=25, callbacks=callbacks_list)
+    model.fit(network_input, network_output, epochs=epoch, batch_size=30, callbacks=callbacks_list)
 
 
 if __name__ == '__main__':

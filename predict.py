@@ -35,35 +35,36 @@ def generate():
 
     # Get all pitch names
     pitchnames = sorted(set(item for item in notes))
-    offsettimes = sorted(set(item for item in offset))
+    #offsettimes = sorted(set(item for item in offset))
     durationtimes = sorted(set(item for item in duration))
 
     print("num pitch", len(pitchnames))
-    print("num offset", len(offsettimes))
+    #print("num offset", len(offsettimes))
     print("num durration", len(durationtimes))
     # Get all pitch names
     n_vocab = len(set(notes))
-    o_vocab = len(set(offset))
+    #o_vocab = len(set(offset))
     d_vocab = len(set(duration))
 
     #network_input, normalized_input = prepare_sequences(notes, pitchnames, n_vocab)
 
     network_input_notes, normalized_notes = prepare_sequences(notes, pitchnames, n_vocab)
-    network_input_offset, normalized_offset = prepare_sequences(offset, offsettimes, o_vocab)
+    #network_input_offset, normalized_offset = prepare_sequences(offset, offsettimes, o_vocab)
     network_input_duration, normalized_duration = prepare_sequences(duration, durationtimes, d_vocab)
     #print(network_input_notes)
 
     #model = create_network(normalized_input, n_vocab)
-    n_model = create_network( normalized_notes, n_vocab,'weights-notes.hdf5')
+    n_model = create_network( normalized_notes, n_vocab,'notesweights-improvement-99-0.6497-bigger.hdf5')
     #o_model = create_network( normalized_offset, o_vocab,'weights-improvement-01-7.3574-bigger.hdf5')
-    d_model = create_network( normalized_duration, d_vocab,'weights-duration.hdf5')
+    d_model = create_network( normalized_duration, d_vocab,'durationweights-improvement-70-0.1670-bigger.hdf5')
     
+    start = numpy.random.randint(0, len(network_input_notes)-1)
     print("==================== notes =========================")
-    prediction_notes = generate_notes(n_model, network_input_notes, pitchnames, n_vocab)
+    prediction_notes = generate_notes(n_model, network_input_notes, pitchnames, n_vocab, start)
     print("==================== offset =========================")
     #prediction_offsets = generate_notes(o_model, network_input_offset, offsettimes, o_vocab)
     print("==================== duration =========================")
-    prediction_durations = generate_notes(d_model,network_input_duration, durationtimes, d_vocab)
+    prediction_durations = generate_notes(d_model,network_input_duration, durationtimes, d_vocab, start)
 
     create_midi(prediction_notes, None, prediction_durations)
 
@@ -119,15 +120,14 @@ def create_network(network_input, n_vocab, weights):
     return model
 
 
-def generate_notes(model, network_input, pitchnames, n_vocab):
+def generate_notes(model, network_input, pitchnames, n_vocab, start_seq):
     """ Generate notes from the neural network based on a sequence of notes """
     # pick a random sequence from the input as a starting point for the prediction
-    start = numpy.random.randint(0, len(network_input)-1)
 
     int_to_note = dict((number, note) for number, note in enumerate(pitchnames))
     #print(int_to_note)
 
-    pattern = network_input[start]
+    pattern = network_input[start_seq]
     prediction_output = []
 
     # generate 500 notes
@@ -168,12 +168,13 @@ def create_midi(prediction_notes, prediction_offset, prediction_duration):
             notes_in_chord = pattern.split('.')
             notes = []
             for current_note in notes_in_chord:
-                dur = prediction_duration[i]
+                dur = float(Fraction(prediction_duration[i]))
                 #if(isinstance(dur, fractions.Fraction):
 
                 #if(type(dur)==fractions.Fraction):
-                    
-                new_note = note.Note(int(current_note), quarterLength=float(Fraction(prediction_duration[i])))
+                if(dur > 1):
+                    dur = 1
+                new_note = note.Note(int(current_note), quarterLength=dur)
                 new_note.storedInstrument = instrument.Piano()
                 notes.append(new_note)
             new_chord = chord.Chord(notes)
@@ -182,13 +183,19 @@ def create_midi(prediction_notes, prediction_offset, prediction_duration):
             output_notes.append(new_chord)
         # pattern is a note
         else:
-            new_note = note.Note(pattern, quarterLength=float(Fraction(prediction_duration[i])))
+            dur = float(Fraction(prediction_duration[i]))
+            if(dur > 1):
+                dur = 1
+            new_note = note.Note(pattern, quarterLength=dur)
             new_note.offset = offset
+
             #new_note.offset = float(Fraction(prediction_offset[i]))
+
             new_note.storedInstrument = instrument.Piano()
+            #new_note.storedInstrument = instrument.Piano()
             output_notes.append(new_note)
         # increase offset each iteration so that notes do not stack
-        offset += float(Fraction(prediction_duration[i]))
+        offset += dur
 
     midi_stream = stream.Stream(output_notes)
 
