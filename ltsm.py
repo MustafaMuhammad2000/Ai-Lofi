@@ -9,6 +9,7 @@ from keras.layers import Dense
 from keras.layers import Dropout
 from keras.layers import LSTM
 from keras.layers import GRU
+from keras.layers import Bidirectional
 from keras.layers import Activation
 from keras.layers import BatchNormalization as BatchNorm
 from keras.utils import np_utils
@@ -17,35 +18,41 @@ from keras.callbacks import ModelCheckpoint
 
 def train_network():
     """ Train a Neural Network to generate music """
-    notes = get_notes()['notes']
-    offset = get_notes()['offset']
-    duration = get_notes()['duration']
+    data = get_notes()['data']
+    # offset = get_notes()['offset']
+    # duration = get_notes()['duration']
 
     # get amount of pitch names
-    n_vocab = len(set(notes))
-    o_vocab = len(set(offset))
-    d_vocab = len(set(duration))
+    data_vocab = len(set(data))
+    print(data_vocab)
+    # n_vocab = len(set(notes))
+    # o_vocab = len(set(offset))
+    # d_vocab = len(set(duration))
 
-    network_input_notes, network_output_notes = prepare_sequences(notes, n_vocab)
-    network_input_offset, network_output_offset = prepare_sequences(offset, o_vocab)
-    network_input_duration, network_output_duration = prepare_sequences(duration, d_vocab)
+    network_input, network_output = prepare_sequences(data, data_vocab)
+    # network_input_notes, network_output_notes = prepare_sequences(notes, n_vocab)
+    # network_input_offset, network_output_offset = prepare_sequences(offset, o_vocab)
+    # network_input_duration, network_output_duration = prepare_sequences(duration, d_vocab)
 
-    n_model = create_network(network_input_notes, n_vocab)
-    o_model = create_network(network_input_offset, o_vocab)
-    d_model = create_network(network_input_duration, d_vocab)
+    model = create_network(network_input, data_vocab)
+    # n_model = create_network(network_input_notes, n_vocab)
+    # o_model = create_network(network_input_offset, o_vocab)
+    # d_model = create_network(network_input_duration, d_vocab)
 
-    train(n_model, network_input_notes, network_output_notes, 100)
-    train(o_model, network_input_offset, network_output_offset, 50)
-    train(d_model, network_input_duration, network_output_duration, 50)
+    train(model, network_input, network_output, 2000, "Data")
+    # train(n_model, network_input_notes, network_output_notes, 100, "Notes")
+    # train(o_model, network_input_offset, network_output_offset, 200, "Offset")
+    # train(d_model, network_input_duration, network_output_duration, 100, "Duration")
 
 
 def get_notes():
     """ Get all the notes and chords from the midi files in the ./midi_songs directory """
-    notes = []
-    offset = []
-    duration = []
+    data = []
+    # notes = []
+    # offset = []
+    # duration = []
 
-    for file in glob.glob("donger james training data/lofi/*.mid"):
+    for file in glob.glob("Animelofi_midi/*.mid"):
         midi = converter.parse(file)
 
         print("Parsing %s" % file)
@@ -60,22 +67,31 @@ def get_notes():
 
         for element in notes_to_parse:
             if isinstance(element, note.Note):
-                notes.append(str(element.pitch))
-                offset.append(str(element.offset))
-                duration.append(str(element.duration.quarterLength))
+                data.append((str(element.pitch), str(element.offset), str(element.duration.quarterLength)))
+                # notes.append(str(element.pitch))
+                # offset.append(str(element.offset))
+                # duration.append(str(element.duration.quarterLength))
             elif isinstance(element, chord.Chord):
-                notes.append('.'.join(str(n) for n in element.normalOrder))
+                data.append(('.'.join(str(n) for n in element.normalOrder), str(element.offset), str(element.duration.quarterLength)))
+                # notes.append('.'.join(str(n) for n in element.normalOrder))
+                # offset.append(str(element.offset))
+                # duration.append(str(element.duration.quarterLength))
 
-    with open('data/notes', 'wb') as filepath:
-        pickle.dump(notes, filepath)
+    # with open('data/notes', 'wb') as filepath:
+    #     pickle.dump(notes, filepath)
+    #
+    # with open('data/offset', 'wb') as filepath:
+    #     pickle.dump(offset, filepath)
+    #
+    # with open('data/duration', 'wb') as filepath:
+    #     pickle.dump(duration, filepath)
 
-    with open('data/offset', 'wb') as filepath:
-        pickle.dump(offset, filepath)
+    with open('data/data', 'wb') as filepath:
+        pickle.dump(data, filepath)
 
-    with open('data/duration', 'wb') as filepath:
-        pickle.dump(duration, filepath)
-
-    return {'notes':notes, 'offset':offset, 'duration':duration}
+    # return {'notes':notes, 'offset':offset, 'duration':duration}
+    return {'data': data}
+    # return data
 
 
 def prepare_sequences(notes, n_vocab):
@@ -112,31 +128,48 @@ def prepare_sequences(notes, n_vocab):
 
 def create_network(network_input, n_vocab):
     """ create the structure of the neural network """
+    # Model 1
+    # model = Sequential()
+    # model.add(GRU(
+    #     512,
+    #     input_shape=(network_input.shape[1], network_input.shape[2]),
+    #     recurrent_dropout=0.3,
+    #     return_sequences=True
+    # ))
+    # model.add(GRU(512, return_sequences=True, recurrent_dropout=0.3,))
+    # model.add(GRU(512))
+    # model.add(BatchNorm())
+    # model.add(Dropout(0.3))
+    # model.add(Dense(256))
+    # model.add(Activation('relu'))
+    # model.add(BatchNorm())
+    # model.add(Dropout(0.3))
+    # model.add(Dense(n_vocab))
+    # model.add(Activation('softmax'))
+    # model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
+
     model = Sequential()
     model.add(GRU(
         512,
         input_shape=(network_input.shape[1], network_input.shape[2]),
-        recurrent_dropout=0.3,
         return_sequences=True
     ))
-    model.add(GRU(512, return_sequences=True, recurrent_dropout=0.3,))
-    model.add(GRU(512))
-    model.add(BatchNorm())
     model.add(Dropout(0.3))
+    model.add(Bidirectional(GRU(512, return_sequences=True)))
+    model.add(Dropout(0.3))
+    model.add(Bidirectional(GRU(512)))
     model.add(Dense(256))
-    model.add(Activation('relu'))
-    model.add(BatchNorm())
     model.add(Dropout(0.3))
     model.add(Dense(n_vocab))
     model.add(Activation('softmax'))
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
+    model.compile(loss='categorical_crossentropy', optimizer='adam')
 
     return model
 
 
-def train(model, network_input, network_output, epoch):
+def train(model, network_input, network_output, epoch, name):
     """ train the neural network """
-    filepath = "weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
+    filepath = name+"-weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
     checkpoint = ModelCheckpoint(
         filepath,
         monitor='loss',
@@ -146,7 +179,7 @@ def train(model, network_input, network_output, epoch):
     )
     callbacks_list = [checkpoint]
 
-    model.fit(network_input, network_output, epochs=epoch, batch_size=25, callbacks=callbacks_list)
+    model.fit(network_input, network_output, epochs=epoch, batch_size=512, callbacks=callbacks_list)
 
 
 if __name__ == '__main__':
