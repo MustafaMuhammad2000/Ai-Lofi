@@ -34,7 +34,7 @@ def train_network():
     #o_model = create_network(network_input_offset, o_vocab)
     d_model = create_network(network_input_duration, d_vocab)
 
-    n_model.load
+    n_model.load_weights("models/notesweights-improvement-99-0.6497-bigger.hdf5")
 
     train(n_model, network_input_notes, network_output_notes, 100, "notes")
     #train(o_model, network_input_offset, network_output_offset, 50)
@@ -132,7 +132,7 @@ def create_network(network_input, n_vocab):
     model.add(Dropout(0.3))
     model.add(Dense(n_vocab))
     model.add(Activation('softmax'))
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
+    model.compile(loss='categorical_crossentropy', optimizer='adam')
 
     return model
 
