@@ -30,6 +30,8 @@ def train_network():
     # d_vocab = len(set(duration))
 
     network_input, network_output = prepare_sequences(data, data_vocab)
+    print(network_input)
+    print(network_output)
     # network_input_notes, network_output_notes = prepare_sequences(notes, n_vocab)
     # network_input_offset, network_output_offset = prepare_sequences(offset, o_vocab)
     # network_input_duration, network_output_duration = prepare_sequences(duration, d_vocab)
@@ -52,7 +54,7 @@ def get_notes():
     # offset = []
     # duration = []
 
-    for file in glob.glob("Animelofi_midi/*.mid"):
+    for file in glob.glob("../donger james training data/lofi/*.mid"):
         midi = converter.parse(file)
 
         print("Parsing %s" % file)
@@ -154,12 +156,12 @@ def create_network(network_input, n_vocab):
         input_shape=(network_input.shape[1], network_input.shape[2]),
         return_sequences=True
     ))
-    model.add(Dropout(0.3))
+    model.add(Dropout(0.6))
     model.add(Bidirectional(GRU(512, return_sequences=True)))
-    model.add(Dropout(0.3))
+    model.add(Dropout(0.6))
     model.add(Bidirectional(GRU(512)))
     model.add(Dense(256))
-    model.add(Dropout(0.3))
+    model.add(Dropout(0.6))
     model.add(Dense(n_vocab))
     model.add(Activation('softmax'))
     model.compile(loss='categorical_crossentropy', optimizer='adam')
@@ -175,11 +177,12 @@ def train(model, network_input, network_output, epoch, name):
         monitor='loss',
         verbose=0,
         save_best_only=True,
-        mode='min'
+        mode='min',
+        period=5
     )
     callbacks_list = [checkpoint]
 
-    model.fit(network_input, network_output, epochs=epoch, batch_size=512, callbacks=callbacks_list)
+    model.fit(network_input, network_output, epochs=epoch, batch_size=32, callbacks=callbacks_list)
 
 
 if __name__ == '__main__':
