@@ -96,7 +96,7 @@ def get_notes():
 
 def prepare_sequences(notes, n_vocab):
     """ Prepare the sequences used by the Neural Network """
-    sequence_length = 100
+    sequence_length = 200
 
     # get all pitch names
     pitchnames = sorted(set(item for item in notes))
@@ -179,7 +179,7 @@ def train(model, network_input, network_output, epoch, name):
     )
     callbacks_list = [checkpoint]
 
-    model.fit(network_input, network_output, epochs=epoch, batch_size=512, callbacks=callbacks_list)
+    model.fit(network_input, network_output, epochs=epoch, batch_size=256, callbacks=callbacks_list)
 
 
 if __name__ == '__main__':

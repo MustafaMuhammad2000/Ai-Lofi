@@ -64,7 +64,7 @@ def generate():
     #print(network_input_notes)
 
 
-    model = create_network(normalized_input, vocab, 'Data-weights-improvement-288-0.1145-bigger.hdf5')
+    model = create_network(normalized_input, vocab, 'Data-weights-improvement-61-0.3072-bigger.hdf5')
 
     # n_model = create_network( normalized_notes, n_vocab,'Notes-weights-improvement-89-0.0489-bigger.hdf5')
     # # o_model = create_network( normalized_offset, o_vocab,'Offset-weights-improvement-140-0.2950-bigger.hdf5')
@@ -90,7 +90,7 @@ def prepare_sequences(notes, pitchnames, n_vocab):
     # map between notes and integers and back
     note_to_int = dict((note, number) for number, note in enumerate(pitchnames))
 
-    sequence_length = 100
+    sequence_length = 200
     network_input = []
     output = []
     for i in range(0, len(notes) - sequence_length, 1):
