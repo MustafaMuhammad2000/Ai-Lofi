@@ -7,11 +7,14 @@ from music21 import converter, instrument, note, chord
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import Dropout
+from keras.layers import Embedding
+from keras.layers import Flatten
 from keras.layers import LSTM
 from keras.layers import GRU
 from keras.layers import Bidirectional
 from keras.layers import Activation
 from keras.layers import BatchNormalization as BatchNorm
+from keras.preprocessing.text import one_hot
 from keras.utils import np_utils
 from keras.callbacks import ModelCheckpoint
 
@@ -19,12 +22,18 @@ from keras.callbacks import ModelCheckpoint
 def train_network():
     """ Train a Neural Network to generate music """
     data = get_notes()['data']
+    data_vocab = len(set(data))
+    print('data vocab', data_vocab)
+    encoded_data = [one_hot(d, data_vocab) for d in data]
+    emodel = embed_model(data_vocab, len(encoded_data))
+    # def train_embed(model, ninput, noutput, epoch, name):
+    train_embed(emodel, encoded_data, data, 2000, "wow")
+    #print(encoded_data)
     # offset = get_notes()['offset']
     # duration = get_notes()['duration']
 
     # get amount of pitch names
-    data_vocab = len(set(data))
-    print(data_vocab)
+    #print(data_vocab)
     # n_vocab = len(set(notes))
     # o_vocab = len(set(offset))
     # d_vocab = len(set(duration))
@@ -46,6 +55,16 @@ def train_network():
     # train(o_model, network_input_offset, network_output_offset, 200, "Offset")
     # train(d_model, network_input_duration, network_output_duration, 100, "Duration")
 
+def embed_model(vocab_size, max_length):
+    model = Sequential()
+    model.add(Embedding(vocab_size, 64, input_length=5))
+    model.add(Flatten())
+    model.add(Dense(1, activation='sigmoid'))
+    model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    print(model.summary())
+    return model
+
+
 
 def get_notes():
     """ Get all the notes and chords from the midi files in the ./midi_songs directory """
@@ -54,7 +73,7 @@ def get_notes():
     # offset = []
     # duration = []
 
-    for file in glob.glob("../donger james training data/lofi/*.mid"):
+    for file in glob.glob("../donger james training data/test/*.mid"):
         midi = converter.parse(file)
 
         print("Parsing %s" % file)
@@ -69,12 +88,12 @@ def get_notes():
 
         for element in notes_to_parse:
             if isinstance(element, note.Note):
-                data.append((str(element.pitch), str(element.offset), str(element.duration.quarterLength)))
+                data.append('~'.join([str(element.pitch), str(element.offset), str(element.duration.quarterLength)]))
                 # notes.append(str(element.pitch))
                 # offset.append(str(element.offset))
                 # duration.append(str(element.duration.quarterLength))
             elif isinstance(element, chord.Chord):
-                data.append(('.'.join(str(n) for n in element.normalOrder), str(element.offset), str(element.duration.quarterLength)))
+                data.append('~'.join(['.'.join(str(n) for n in element.normalOrder), str(element.offset), str(element.duration.quarterLength)]))
                 # notes.append('.'.join(str(n) for n in element.normalOrder))
                 # offset.append(str(element.offset))
                 # duration.append(str(element.duration.quarterLength))
@@ -168,6 +187,18 @@ def create_network(network_input, n_vocab):
 
     return model
 
+def train_embed(model, ninput, noutput, epoch, name):
+    filepath = name+"embed-{epoch:02d}-{loss:.4f}-bigger.hdf5"
+    checkpoint = ModelCheckpoint(
+        filepath,
+        monitor='accuracy',
+        verbose=0,
+        save_best_only=True,
+        mode='max',
+    )
+    callbacks_list = [checkpoint]
+
+    model.fit(ninput, noutput, epochs=epoch, batch_size=32, callbacks=callbacks_list)
 
 def train(model, network_input, network_output, epoch, name):
     """ train the neural network """
