@@ -26,6 +26,8 @@ def train_network():
     data = simi.get_notes()
     vocab = simi.generate_vocab(data)
 
+    sequences = prepare_sequences(data, len(vocab))
+
     #data_vocab = len(set(data))
     #print('data vocab', data_vocab)
     #encoded_data = [one_hot(d, data_vocab) for d in data]
