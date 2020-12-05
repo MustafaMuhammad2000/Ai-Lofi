@@ -17,17 +17,21 @@ from keras.layers import BatchNormalization as BatchNorm
 from keras.preprocessing.text import one_hot
 from keras.utils import np_utils
 from keras.callbacks import ModelCheckpoint
+import similarity as simi
 
 
 def train_network():
     """ Train a Neural Network to generate music """
-    data = get_notes()['data']
-    data_vocab = len(set(data))
-    print('data vocab', data_vocab)
-    encoded_data = [one_hot(d, data_vocab) for d in data]
-    emodel = embed_model(data_vocab, len(encoded_data))
+    #data = get_notes()['data']
+    data = simi.get_notes()
+    vocab = simi.generate_vocab(data)
+
+    #data_vocab = len(set(data))
+    #print('data vocab', data_vocab)
+    #encoded_data = [one_hot(d, data_vocab) for d in data]
+    #emodel = embed_model(data_vocab, len(encoded_data))
     # def train_embed(model, ninput, noutput, epoch, name):
-    train_embed(emodel, encoded_data, data, 2000, "wow")
+    #train_embed(emodel, encoded_data, data, 2000, "wow")
     #print(encoded_data)
     # offset = get_notes()['offset']
     # duration = get_notes()['duration']
@@ -68,10 +72,10 @@ def embed_model(vocab_size, max_length):
 
 def get_notes():
     """ Get all the notes and chords from the midi files in the ./midi_songs directory """
-    data = []
-    # notes = []
-    # offset = []
-    # duration = []
+    #data = []
+    notes = []
+    offset = []
+    duration = []
 
     for file in glob.glob("../donger james training data/test/*.mid"):
         midi = converter.parse(file)
@@ -83,35 +87,38 @@ def get_notes():
         try: # file has instrument parts
             s2 = instrument.partitionByInstrument(midi)
             notes_to_parse = s2.parts[0].recurse()
-        except: # file has notes in a flat structure
+        except E: # file has notes in a flat structure
             notes_to_parse = midi.flat.notes
+
 
         for element in notes_to_parse:
             if isinstance(element, note.Note):
-                data.append('~'.join([str(element.pitch), str(element.offset), str(element.duration.quarterLength)]))
-                # notes.append(str(element.pitch))
-                # offset.append(str(element.offset))
-                # duration.append(str(element.duration.quarterLength))
+                #data.append('~'.join([str(element.pitch), str(element.offset), str(element.duration.quarterLength)]))
+                 notes.append(str(element.pitch))
+                 offset.append(str(element.offset))
+                 duration.append(str(element.duration.quarterLength))
             elif isinstance(element, chord.Chord):
-                data.append('~'.join(['.'.join(str(n) for n in element.normalOrder), str(element.offset), str(element.duration.quarterLength)]))
-                # notes.append('.'.join(str(n) for n in element.normalOrder))
-                # offset.append(str(element.offset))
-                # duration.append(str(element.duration.quarterLength))
+                #data.append('~'.join(['.'.join(str(n) for n in element.normalOrder), str(element.offset), str(element.duration.quarterLength)]))
+                #notes.append('.'.join(str(n) for n in element.normalOrder))
+                for i in element.normalOrder:
+                    notes.append(str(i))
+                    offset.append(str(element.offset))
+                    duration.append(str(element.duration.quarterLength))
 
-    # with open('data/notes', 'wb') as filepath:
-    #     pickle.dump(notes, filepath)
-    #
-    # with open('data/offset', 'wb') as filepath:
-    #     pickle.dump(offset, filepath)
-    #
-    # with open('data/duration', 'wb') as filepath:
-    #     pickle.dump(duration, filepath)
+    with open('data/notes', 'wb') as filepath:
+        pickle.dump(notes, filepath)
+    
+    with open('data/offset', 'wb') as filepath:
+        pickle.dump(offset, filepath)
+    
+    with open('data/duration', 'wb') as filepath:
+         pickle.dump(duration, filepath)
 
-    with open('data/data', 'wb') as filepath:
-        pickle.dump(data, filepath)
+    #with open('data/data', 'wb') as filepath:
+    #    pickle.dump(data, filepath)
 
-    # return {'notes':notes, 'offset':offset, 'duration':duration}
-    return {'data': data}
+     return {'notes':notes, 'offset':offset, 'duration':duration}
+    #return {'data': data}
     # return data
 
 
