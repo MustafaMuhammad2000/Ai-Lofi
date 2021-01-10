@@ -36,24 +36,24 @@ def train_network():
     print(d_vocab)
 
 
-    # network_input_pitch, network_output_pitch = prepare_sequences(pitch, p_vocab, songlengths)
-    # p_model = create_network(network_input_pitch, p_vocab)
-    # train(p_model, network_input_pitch, network_output_pitch, 100, "Pitches", 256)
-    # #
+    network_input_pitch, network_output_pitch = prepare_sequences(pitch, p_vocab, songlengths)
+    p_model = create_network(network_input_pitch, p_vocab)
+    train(p_model, network_input_pitch, network_output_pitch, 5000, "Pitches", 1024)
     #
-    # network_input_velocity, network_output_velocity = prepare_sequences(velocity, v_vocab, songlengths)
-    # v_model = create_network(network_input_velocity, v_vocab)
-    # train(v_model, network_input_velocity, network_output_velocity, 100, "Velocities", 256)
-    # #
+
+    network_input_velocity, network_output_velocity = prepare_sequences(velocity, v_vocab, songlengths)
+    v_model = create_network(network_input_velocity, v_vocab)
+    train(v_model, network_input_velocity, network_output_velocity, 100, "Velocities", 1024)
     #
-    # network_input_offset, network_output_offset = prepare_sequences(offset, o_vocab, songlengths)
-    # o_model = create_network(network_input_offset, o_vocab)
-    # train(o_model, network_input_offset, network_output_offset, 150, "Offset", 256)
-    #
+
+    network_input_offset, network_output_offset = prepare_sequences(offset, o_vocab, songlengths)
+    o_model = create_network(network_input_offset, o_vocab)
+    train(o_model, network_input_offset, network_output_offset, 100, "Offset", 1024)
+
 
     network_input_duration, network_output_duration = prepare_sequences(duration, d_vocab, songlengths)
     d_model = create_network(network_input_duration, d_vocab)
-    train(d_model, network_input_duration, network_output_duration, 150, "Duration", 256)
+    train(d_model, network_input_duration, network_output_duration, 150, "Duration", 1024)
     #
 
     # model = create_network(network_input, data_vocab)
@@ -78,7 +78,7 @@ def get_notes_multiple():
     songlengths = []
     BadFiles = 0
     GoodFiles = 0
-    for file in glob.glob("Yuge_Data_Anime2/*.mid"):
+    for file in glob.glob("LesReallyGo/*.mid"):
         print("--------------------------------------")
         print("Parsing %s" % file)
         print("--------------------------------------")
@@ -96,45 +96,28 @@ def get_notes_multiple():
         for i in range(0, len(pm.instruments)):
             pm.instruments[i].remove_invalid_notes()
             if pm.instruments[i].program != 0: print(pretty_midi.program_to_instrument_name(pm.instruments[i].program))
-            print(len(pm.instruments[i].notes))
+            print("Part len: ", len(pm.instruments[i].notes))
             notes.append(pm.instruments[i].notes)
-            if len(pm.instruments[i].pitch_bends) > 0: print("Pitch Bends", len(pm.instruments[i].pitch_bends))
-            if len(pm.instruments[i].control_changes) > 0: print("Control changes", len(pm.instruments[i].control_changes))
+            # if len(pm.instruments[i].pitch_bends) > 0: print("Pitch Bends", len(pm.instruments[i].pitch_bends))
+            # if len(pm.instruments[i].control_changes) > 0: print("Control changes", len(pm.instruments[i].control_changes))
 
-        for list in notes:
-            length = 0
-            for note in list:
-                notesVar.append((note.start, note.get_duration(), note.pitch, note.velocity))
-                length += 1
-            notesVar = sorted(notesVar)
-            prevOffset = 0
-            songlengths.append(length)
-            for note in notesVar:
-                offset.append(round(note[0] - prevOffset, 1))
-                duration.append(round(note[1], 1))
-                pitch.append(note[2])
-                velocity.append(note[3])
-                prevOffset = note[0]
-            notesVar = []
+        flat_list = [item for sublist in notes for item in sublist]
+        print(len(flat_list))
+        length = 0
 
-    # print("Offset")
-    # print(len(offset))
-    # print("Unique Offset", len(set(offset)))
-    # print(sorted(set(offset)))
-    # print("Duration")
-    # print(len(duration))
-    # print("Unique Duration", len(set(duration)))
-    # print(sorted(set(duration)))
-    # print("Notes")
-    # print(len(pitch))
-    # print("Unique Pitches", len(set(pitch)))
-    # print("Notes")
-    # print(len(velocity))
-    # print("Unique Velocity", len(set(velocity)))
-    # print("This many files did work", GoodFiles)
-    # print("This many files did not work", BadFiles)
-    # print(len(songlengths))
-    # print(songlengths)
+        for note in flat_list:
+            notesVar.append((note.start, note.get_duration(), note.pitch, note.velocity))
+            length += 1
+        notesVar = sorted(notesVar)
+        prevOffset = 0
+        songlengths.append(length)
+        for note in notesVar:
+            offset.append(round(note[0] - prevOffset, 1))
+            duration.append(round(note[1], 1))
+            pitch.append(note[2])
+            velocity.append(note[3])
+            prevOffset = note[0]
+        print(length)
 
     with open('data/pitch', 'wb') as filepath:
         pickle.dump(pitch, filepath)
@@ -164,28 +147,28 @@ def prepare_sequences(notes, n_vocab, songlengths):
     network_output = []
 
     # create input sequences and the corresponding outputs
-    for i in range(0, len(notes) - sequence_length, 1):
-        sequence_in = notes[i:i + sequence_length]
-        sequence_out = notes[i + sequence_length]
-        network_input.append([note_to_int[char] for char in sequence_in])
-        network_output.append(note_to_int[sequence_out])
+    # for i in range(0, len(notes) - sequence_length, 1):
+    #     sequence_in = notes[i:i + sequence_length]
+    #     sequence_out = notes[i + sequence_length]
+    #     network_input.append([note_to_int[char] for char in sequence_in])
+    #     network_output.append(note_to_int[sequence_out])
 
-    # j = 0
-    # i = 0
-    # total = songlengths[j]
-    # while i < len(notes)-sequence_length:
-    #     if(sequence_length+i <= total):
-    #         sequence_in = notes[i:i + sequence_length]
-    #         sequence_out = notes[i + sequence_length]
-    #         # print([note_to_int[i] for i in sequence_in])
-    #         network_input.append([note_to_int[char] for char in sequence_in])
-    #         network_output.append(note_to_int[sequence_out])
-    #         i = i+1
-    #     else:
-    #         i = total
-    #         j = j+1
-    #         total = total+songlengths[j]
-    # print(j)
+    j = 0
+    i = 0
+    total = songlengths[j]
+    while i < len(notes)-sequence_length:
+        if(sequence_length+i <= total):
+            sequence_in = notes[i:i + sequence_length]
+            sequence_out = notes[i + sequence_length]
+            # print([note_to_int[i] for i in sequence_in])
+            network_input.append([note_to_int[char] for char in sequence_in])
+            network_output.append(note_to_int[sequence_out])
+            i = i+1
+        else:
+            i = total
+            j = j+1
+            total = total+songlengths[j]
+    print(j)
 
 
     print("This is network input", len(network_input), "This is network output", len(network_output))
@@ -202,11 +185,6 @@ def prepare_sequences(notes, n_vocab, songlengths):
     network_output = np_utils.to_categorical(network_output)
 
     # Integer encode notes then put an embedding layer on outputs, do I also have to change input layers as well who the hell knows.
-    # print("----------------------------------------------------------------------")
-    # print(network_input)
-    # print(numpy.argwhere(numpy.isnan(network_input)))
-    # print("----------------------------------------------------------------------")
-    # print(network_output)
 
     return (network_input, network_output)
 
@@ -221,12 +199,12 @@ def create_network(network_input, n_vocab):
         input_shape=(network_input.shape[1], network_input.shape[2]),
         return_sequences=True
     ))
-    model.add(Dropout(0.5))
+    model.add(Dropout(0.3))
     model.add(Bidirectional(GRU(512, return_sequences=True)))
-    model.add(Dropout(0.5))
+    model.add(Dropout(0.3))
     model.add(Bidirectional(GRU(512)))
     model.add(Dense(256))
-    model.add(Dropout(0.5))
+    model.add(Dropout(0.3))
     model.add(Dense(n_vocab))
     model.add(Activation('softmax'))
     model.compile(loss='categorical_crossentropy', optimizer='adam')
