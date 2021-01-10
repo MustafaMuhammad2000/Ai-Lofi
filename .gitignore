@@ -3,4 +3,18 @@
 /DataHolder/*
 /lofi_midi/*
 /new_midi/*
+<<<<<<< HEAD
 /outputs/*
+=======
+/singletrainedmodels/*
+/Animelofi_midi/*
+/anime_midi/*
+/outputs/*
+/Yuge_Data/*
+/Yuge_Data_Anime/*
+/Yuge_Data_Anime2/*
+/Yuge_Data_Anime_Combined/*
+/Yuge_Data_Game/*
+/Yuge_Data_Other/*
+/Yuger_Data/*
+>>>>>>> for_gcp
